@@ -1,0 +1,20 @@
+{
+  "name": "Extended Build Storage",
+  "version": "0.2.0",
+  "namespace": "st.bel.extendedbuildstorage",
+  "package": "ExtendedBuildStorage.dll",
+  "manifest_version": 1,
+
+  "description": "Extends your build storage.",
+  "dependencies": {},
+  "url": "https://github.com/blish-hud/Blish-HUD",
+  "author": {
+    "name": "belst",
+    "username": "belst.6815"
+  },
+  "contributors": [],
+  "directories": [ "build-templates" ],
+
+  "enabled_without_gw2": false,
+  "api_permissions": {}
+}

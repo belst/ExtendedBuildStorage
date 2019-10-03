@@ -13,20 +13,22 @@ using Gw2Sharp.WebApi.V2.Models;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Blish_HUD.Input;
+using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
-namespace ExampleBHUDModule {
+namespace ExtendedBuildStorage {
+
 
     [Export(typeof(Module))]
-    public class ExampleBHUDModule : Module {
+    public class ExtendedBuildStorage : Module {
 
         /// <summary>
         /// This is your logger for writing to the log.  Ensure the type of of your module class.
         /// Other classes can have their own logger.  Instance those loggers the same as you have
         /// here, but with their type as the argument.
         /// </summary>
-        private static readonly Logger Logger = Logger.GetLogger(typeof(ExampleBHUDModule));
+        private static readonly Logger Logger = Logger.GetLogger(typeof(ExtendedBuildStorage));
 
-        internal static ExampleBHUDModule ModuleInstance;
+        internal static ExtendedBuildStorage ModuleInstance;
 
         // Service Managers
         internal SettingsManager    SettingsManager    => this.ModuleParameters.SettingsManager;
@@ -35,21 +37,20 @@ namespace ExampleBHUDModule {
         internal Gw2ApiManager      Gw2ApiManager      => this.ModuleParameters.Gw2ApiManager;
 
         private Texture2D     _mugTexture;
-        private double        _runningTime = 0;
-        private List<Dungeon> _dungeons;
-
-        private SettingEntry<bool> _anotherExampleSetting;
 
         // Controls (be sure to dispose of these in Unload()
-        private CornerIcon       _exampleIcon;
-        private ContextMenuStrip _dungeonContextMenuStrip;
+
+        private WindowTab _templateTab;
+        private Panel _tabPanel;
+        private string _templatePath;
+        private TemplateDetails _tplPanel;
 
         /// <summary>
         /// Ideally you should keep the constructor as is.
         /// Use <see cref="Initialize"/> to handle initializing the module.
         /// </summary>
         [ImportingConstructor]
-        public ExampleBHUDModule([Import("ModuleParameters")] ModuleParameters moduleParameters) : base(moduleParameters) {
+        public ExtendedBuildStorage([Import("ModuleParameters")] ModuleParameters moduleParameters) : base(moduleParameters) {
             ModuleInstance = this;
         }
 
@@ -58,10 +59,6 @@ namespace ExampleBHUDModule {
         /// between updates to both Blish HUD and your module.
         /// </summary>
         protected override void DefineSettings(SettingCollection settings) {
-            settings.DefineSetting("ExampleSetting.", "This is the value of the setting", "Display name of setting", "If exposed, this setting will be shown in settings with this description, automatically.");
-
-            // Assigning the return value is the preferred way of keeping track of your settings
-            _anotherExampleSetting = settings.DefineSetting("AnotherExample", true, "This setting is a bool setting.", "Settings can be many different types");
         }
 
         /// <summary>
@@ -82,25 +79,21 @@ namespace ExampleBHUDModule {
         /// with <see cref="Blish_HUD.OverlayService.QueueMainThreadUpdate(Action{GameTime})"/>.
         /// </summary>
         protected override async Task LoadAsync() {
+
             // Load content from the ref directory automatically with the ContentsManager
             _mugTexture = ContentsManager.GetTexture("603447.png");
-
-            // Use the Gw2ApiManager to make requests to the API using the permissions provided in your manifest
-            var dungeonRequest = await Gw2ApiManager.Gw2ApiClient.Dungeons.AllAsync();
-            _dungeons = dungeonRequest.ToList();
-
-            // If you really need to, you can recall your settings values with the SettingsManager
-            // It is better if you just hold onto the returned "TypeEntry" instance when doing your initial DefineSetting, though
-            SettingEntry<string> setting1 = SettingsManager.ModuleSettings["ExampleSetting"] as SettingEntry<string>;
 
             // Get your manifest registered directories with the DirectoriesManager
             foreach (string directoryName in this.DirectoriesManager.RegisteredDirectories) {
                 string fullDirectoryPath = DirectoriesManager.GetFullDirectoryPath(directoryName);
 
                 var allFiles = Directory.EnumerateFiles(fullDirectoryPath, "*", SearchOption.AllDirectories).ToList();
-
                 Logger.Info($"'{directoryName}' can be found at '{fullDirectoryPath}' and has {allFiles.Count} total files within it.");
             }
+
+            _templatePath = DirectoriesManager.GetFullDirectoryPath("build-templates");
+
+            _tabPanel = BuildTemplatePanel(GameService.Overlay.BlishHudWindow.ContentRegion);
         }
 
         /// <summary>
@@ -110,34 +103,8 @@ namespace ExampleBHUDModule {
         /// <see cref="Module.Loaded" /> to update correctly.
         /// </summary>
         protected override void OnModuleLoaded(EventArgs e) {
-            // Add a mug icon in the top left next to the other icons
-            _exampleIcon = new CornerIcon() {
-                Icon             = _mugTexture,
-                BasicTooltipText = $"{this.Name} [{this.Namespace}]",
-                Parent           = GameService.Graphics.SpriteScreen
-            };
 
-            // Show a notification in the middle of the screen when the icon is clicked
-            _exampleIcon.Click += delegate(object sender, MouseEventArgs args) {
-                ScreenNotification.ShowNotification("Hello from Blish HUD!");
-            };
-
-            // Add a right click menu to the icon that shows each Revenant legend (pulled from the API)
-            _dungeonContextMenuStrip = new ContextMenuStrip();
-
-            foreach (var dungeon in _dungeons) {
-                var dungeonItem = _dungeonContextMenuStrip.AddMenuItem(dungeon.Id);
-
-                var dungeonMenu = new ContextMenuStrip();
-
-                foreach (var path in dungeon.Paths) {
-                    dungeonMenu.AddMenuItem($"{path.Id} ({path.Type})");
-                }
-
-                dungeonItem.Submenu = dungeonMenu;
-            }
-
-            _exampleIcon.Menu = _dungeonContextMenuStrip;
+            _templateTab = GameService.Overlay.BlishHudWindow.AddTab("Build Templates", this.ContentsManager.GetTexture(@"textures\1466345.png"), _tabPanel);
 
             base.OnModuleLoaded(e);
         }
@@ -150,12 +117,7 @@ namespace ExampleBHUDModule {
         /// slowing down the overlay.
         /// </summary>
         protected override void Update(GameTime gameTime) {
-            _runningTime += gameTime.ElapsedGameTime.TotalMilliseconds;
 
-            if (_runningTime > 60000) {
-                _runningTime -= 60000;
-                ScreenNotification.ShowNotification("The examples module shows this message every 60 seconds!", ScreenNotification.NotificationType.Warning);
-            }
         }
 
         /// <summary>
@@ -164,14 +126,98 @@ namespace ExampleBHUDModule {
         /// Be sure to remove any tabs added to the Director window, CornerIcons, etc.
         /// </summary>
         protected override void Unload() {
-            _exampleIcon.Dispose();
-            _dungeonContextMenuStrip.Dispose();
+            _tabPanel.Dispose();
 
             // Static members are not automatically cleared and will keep a reference to your,
             // module unless manually unset.
             ModuleInstance = null;
         }
 
+        private Panel BuildTemplatePanel(Rectangle rect)
+        {
+            var btPanel = new Panel()
+            {
+                CanScroll = false,
+                Size = rect.Size,
+            };
+
+            int topOffset = Panel.MenuStandard.ControlOffset.Y;
+
+            var menuSection = new Panel
+            {
+                Title = "Build Templates",
+                ShowBorder = true,
+                Size = Panel.MenuStandard.Size - new Point(0, topOffset + Panel.MenuStandard.ControlOffset.Y),
+                Parent = btPanel
+            };
+
+            var buildTemplates = new FlowMenu
+            {
+                Size = menuSection.ContentRegion.Size - new Point(0, 40),
+                //Height = menuSection.ContentRegion.Size.Y - 40,
+                MenuItemHeight = 40,
+                Parent = menuSection,
+                CanSelect = true,
+                CanScroll = true,
+            };
+
+            var newButton = new StandardButton
+            {
+                Parent = menuSection,
+                Text = "New Template",
+                Width = buildTemplates.ContentRegion.Width - 10,
+                Top = buildTemplates.Bottom + 3,
+            };
+
+            //Adhesive.Binding.CreateOneWayBinding(() => newButton.Top, () => buildTemplates.Bottom);
+            //buildTemplates.RecalculateLayout();
+
+
+            var _templates = Directory.GetFiles(_templatePath, "*.txt", SearchOption.TopDirectoryOnly).Select(f => new Template(Path.GetFileNameWithoutExtension(f))).ToList();
+
+            foreach (var t in _templates)
+            {
+                var bt = buildTemplates.AddMenuItem(t.Name, t.Icon);
+                bt.Click += delegate
+                {
+                    _tplPanel.Template = t;
+                };
+            }
+
+            buildTemplates.Select((MenuItem)buildTemplates.Children.First());
+
+            GameService.Overlay.QueueMainThreadUpdate((gameTime) => {
+                var searchBox = new TextBox()
+                {
+                    PlaceholderText = "Search",
+                    Width = menuSection.Width,
+                    Location = new Point(TextBox.Standard.ControlOffset.Y, menuSection.Left),
+                    Parent = btPanel
+                };
+                menuSection.Location = new Point(Panel.MenuStandard.PanelOffset.X, topOffset + searchBox.Bottom);
+
+                searchBox.TextChanged += delegate (object sender, EventArgs args) {
+                    buildTemplates.FilterChildren<MenuItem>(mi => mi.Text.ToLower().Contains(searchBox.Text.ToLower()));
+                };
+            });
+
+            var tmp = _templates.Find(t => t.Name == buildTemplates.SelectedMenuItem.Text);
+            // Main panel
+            _tplPanel = new TemplateDetails(tmp)
+            {
+                Location = new Point(menuSection.Right + Panel.ControlStandard.ControlOffset.X, menuSection.Top),
+                Size = new Point(btPanel.ContentRegion.Width - menuSection.Right - Control.ControlStandard.ControlOffset.X, menuSection.Height),
+                Parent = btPanel,
+            };
+
+
+            return btPanel;
+        }
+
+        
+
     }
+
+    
 
 }
