@@ -144,26 +144,36 @@ namespace ExtendedBuildStorage {
             {
                 Title = "Build Templates",
                 ShowBorder = true,
-                Size = Panel.MenuStandard.Size - new Point(0, topOffset + Panel.MenuStandard.ControlOffset.Y),
+                Size = Panel.MenuStandard.Size - new Point(0, 2 * topOffset + Panel.MenuStandard.ControlOffset.Y + 57),
+                Location = new Point(Panel.MenuStandard.PanelOffset.X, topOffset + 37),
                 Parent = btPanel
             };
 
-            var buildTemplates = new FlowMenu
+            var scrollPanel = new Panel
             {
-                Size = menuSection.ContentRegion.Size - new Point(0, 40),
+                CanScroll = true,
+                Parent = menuSection,
+                Size = new Point(menuSection.Size.X, menuSection.ContentRegion.Size.Y),
+            };
+            //Adhesive.Binding.CreateOneWayBinding(() => scrollPanel.Size, () => menuSection.ContentRegion, c => c.Size);
+
+            var buildTemplates = new Menu
+            {
                 //Height = menuSection.ContentRegion.Size.Y - 40,
                 MenuItemHeight = 40,
-                Parent = menuSection,
+                Parent = scrollPanel,
                 CanSelect = true,
-                CanScroll = true,
+                Size = scrollPanel.Size,
             };
+            //Adhesive.Binding.CreateOneWayBinding(() => buildTemplates.Size, () => scrollPanel.ContentRegion, c => c.Size);
 
             var newButton = new StandardButton
             {
-                Parent = menuSection,
+                Parent = btPanel,
                 Text = "New Template",
-                Width = buildTemplates.ContentRegion.Width - 10,
-                Top = buildTemplates.Bottom + 3,
+                Width = menuSection.ContentRegion.Width - 10,
+                Left = menuSection.ContentRegion.Left + Panel.MenuStandard.PanelOffset.X,
+                Top = menuSection.Bottom + 3,
             };
 
 
@@ -200,14 +210,20 @@ namespace ExtendedBuildStorage {
                 var searchBox = new TextBox()
                 {
                     PlaceholderText = "Search",
-                    Width = menuSection.Width,
-                    Location = new Point(TextBox.Standard.ControlOffset.Y, menuSection.Left),
+                    Width = menuSection.ContentRegion.Width,
+                    Location = new Point(menuSection.ContentRegion.Left + Panel.MenuStandard.PanelOffset.X, TextBox.ControlStandard.ControlOffset.Y),
                     Parent = btPanel
                 };
-                menuSection.Location = new Point(Panel.MenuStandard.PanelOffset.X, topOffset + searchBox.Bottom);
 
                 searchBox.TextChanged += delegate (object sender, EventArgs args) {
-                    buildTemplates.FilterChildren<MenuItem>(mi => mi.Text.ToLower().Contains(searchBox.Text.ToLower()));
+                    foreach (MenuItem mi in buildTemplates.GetDescendants())
+                    {
+                        mi.MenuItemHeight = 40;
+                        if (!mi.Text.ToLower().Contains(searchBox.Text.ToLower()))
+                        {
+                            mi.MenuItemHeight = 0;
+                        }
+                    }
                 };
             });
 
@@ -224,10 +240,5 @@ namespace ExtendedBuildStorage {
             return btPanel;
         }
 
-        
-
     }
-
-    
-
 }
