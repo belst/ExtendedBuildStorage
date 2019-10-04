@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Blish_HUD;
+﻿using Blish_HUD;
 using Blish_HUD.Controls;
 
 namespace ExtendedBuildStorage
@@ -30,15 +25,11 @@ namespace ExtendedBuildStorage
         public Template Template
         {
             get => _tpl;
-            set {
-                _tpl = value;
-                update();
-            }
+            set => SetProperty(ref _tpl, value);
         }
 
         private void buildLayout()
         {
-
             GameService.Overlay.QueueMainThreadUpdate((gameTime) =>
             {
                 _txtName = new TextBox
@@ -46,11 +37,19 @@ namespace ExtendedBuildStorage
                     Text = _tpl.Name,
                     Parent = this
                 };
+                
                 _txtCode = new TextBox
                 {
                     Text = _tpl.Value,
                     Parent = this,
                     Top = _txtName.Bottom + Control.ControlStandard.ControlOffset.Y,
+                };
+                PropertyChanged += (sender, args) => {
+                    if (args.PropertyName == nameof(Template))
+                    {
+                        _txtName.Text = Template.Name;
+                        _txtCode.Text = Template.Value;
+                    }
                 };
                 var btnCopy = new StandardButton
                 {
@@ -71,12 +70,6 @@ namespace ExtendedBuildStorage
                 btnRename.Click += (sender, args) => _tpl.Name = _txtName.Text;
 
             });
-        }
-
-        private void update()
-        {
-            _txtName.Text = _tpl.Name;
-            _txtCode.Text = _tpl.Value;
         }
     }
 }

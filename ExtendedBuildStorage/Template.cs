@@ -1,19 +1,15 @@
-﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Blish_HUD.Common;
+﻿using System.IO;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace ExtendedBuildStorage
 {
-    class Template
+    class Template: INotifyPropertyChanged
     {
         public Template(string name)
         {
-            Name = name;
+            _name = name;
             if (File.Exists(FullPath))
             {
                 _value = File.ReadAllText(FullPath);
@@ -24,47 +20,70 @@ namespace ExtendedBuildStorage
             }
         }
 
+        public Template(string name, string value)
+        {
+            // Will overwrite already existing builds
+            _name = name;
+            Value = value;
+        }
+
+        public Template Copy()
+        {
+            return new Template(Name + "(Copy)", Value);
+        }
+
         private string _name;
         private string _value;
         private readonly string _path = ExtendedBuildStorage.ModuleInstance.DirectoriesManager.GetFullDirectoryPath("build-templates");
 
         private Texture2D _icon;
 
+        protected bool SetProperty<T>(ref T property, T newValue, [CallerMemberName] string propertyName = null)
+        {
+            if (Equals(property, newValue) || propertyName == null) return false;
+
+            property = newValue;
+
+            OnPropertyChanged(propertyName);
+
+            return true;
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            if (string.IsNullOrEmpty(propertyName)) return;
+
+            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
         public Texture2D Icon
         {
             get => _icon;
-            set => _icon = value;
+            set => SetProperty(ref _icon, value);
         }
 
         public string Filename
         {
-            get
-            {
-                return _name + ".txt";
-            }
+            get => _name + ".txt";
         }
 
         public string FullPath
         {
-            get
-            {
-                return Path.Combine(_path, Filename);
-            }
+            get => Path.Combine(_path, Filename);
         }
 
         public string Name
         {
-            get
-            {
-                return _name;
-            }
+            get => _name;
             set
             {
                 var oldpath = FullPath;
                 if (_name == value)
                     return;
 
-                _name = value;
+                SetProperty(ref _name, value);
                 if (File.Exists(oldpath))
                 {
                     File.Move(oldpath, FullPath);
@@ -74,15 +93,11 @@ namespace ExtendedBuildStorage
 
         public string Value
         {
-            get
-            {
-                // TODO: parse Value
-                return _value;
-            }
+            get => _value;
             set
             {
                 // TODO: verify chatcode
-                _value = value;
+                SetProperty(ref _value, value);
                 File.WriteAllText(FullPath, _value);
             }
         }

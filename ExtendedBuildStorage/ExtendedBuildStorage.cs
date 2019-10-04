@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.IO;
 using System.Linq;
@@ -9,10 +8,8 @@ using Blish_HUD.Controls;
 using Blish_HUD.Modules;
 using Blish_HUD.Settings;
 using Blish_HUD.Modules.Managers;
-using Gw2Sharp.WebApi.V2.Models;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Blish_HUD.Input;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace ExtendedBuildStorage {
@@ -169,11 +166,9 @@ namespace ExtendedBuildStorage {
                 Top = buildTemplates.Bottom + 3,
             };
 
-            //Adhesive.Binding.CreateOneWayBinding(() => newButton.Top, () => buildTemplates.Bottom);
-            //buildTemplates.RecalculateLayout();
-
 
             var _templates = Directory.GetFiles(_templatePath, "*.txt", SearchOption.TopDirectoryOnly).Select(f => new Template(Path.GetFileNameWithoutExtension(f))).ToList();
+            Func<string, Template> findTplByName = name => _templates.Find(t => t.Name == name);
 
             foreach (var t in _templates)
             {
@@ -182,9 +177,24 @@ namespace ExtendedBuildStorage {
                 {
                     _tplPanel.Template = t;
                 };
+                Adhesive.Binding.CreateOneWayBinding(() => bt.Text, () => t.Name);
             }
 
             buildTemplates.Select((MenuItem)buildTemplates.Children.First());
+
+            newButton.Click += delegate
+            {
+                var toAdd = findTplByName(buildTemplates.SelectedMenuItem.Text).Copy();
+                _templates.Add(toAdd);
+                var bt = buildTemplates.AddMenuItem(toAdd.Name, toAdd.Icon);
+                bt.Click += delegate
+                {
+                    _tplPanel.Template = toAdd;
+                };
+                Adhesive.Binding.CreateOneWayBinding(() => bt.Text, () => toAdd.Name);
+                bt.Select();
+                _tplPanel.Template = toAdd; // poor mans click trigger
+            };
 
             GameService.Overlay.QueueMainThreadUpdate((gameTime) => {
                 var searchBox = new TextBox()
@@ -201,7 +211,7 @@ namespace ExtendedBuildStorage {
                 };
             });
 
-            var tmp = _templates.Find(t => t.Name == buildTemplates.SelectedMenuItem.Text);
+            var tmp = findTplByName(buildTemplates.SelectedMenuItem.Text);
             // Main panel
             _tplPanel = new TemplateDetails(tmp)
             {
