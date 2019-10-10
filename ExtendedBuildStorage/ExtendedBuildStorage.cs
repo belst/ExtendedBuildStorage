@@ -231,8 +231,8 @@ namespace ExtendedBuildStorage {
             // Main panel
             _tplPanel = new TemplateDetails(tmp)
             {
-                Location = new Point(menuSection.Right + Panel.ControlStandard.ControlOffset.X, menuSection.Top),
-                Size = new Point(btPanel.ContentRegion.Width - menuSection.Right - Control.ControlStandard.ControlOffset.X, menuSection.Height),
+                Location = new Point(menuSection.Right + Panel.ControlStandard.ControlOffset.X, Panel.ControlStandard.ControlOffset.Y),
+                Size = new Point(btPanel.ContentRegion.Width - menuSection.Right - Control.ControlStandard.ControlOffset.X, rect.Height - 2 * Panel.ControlStandard.ControlOffset.Y),
                 Parent = btPanel,
             };
 

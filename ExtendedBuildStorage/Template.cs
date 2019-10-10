@@ -16,7 +16,7 @@ namespace ExtendedBuildStorage
             }
             else
             {
-                Value = "AAAAAAAAAAAAA";
+                throw new FileNotFoundException("Template with name <" + name + "> not found");
             }
         }
 
