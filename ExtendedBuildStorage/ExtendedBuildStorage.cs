@@ -10,6 +10,7 @@ using Blish_HUD.Settings;
 using Blish_HUD.Modules.Managers;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System.Collections.ObjectModel;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace ExtendedBuildStorage {
@@ -177,17 +178,33 @@ namespace ExtendedBuildStorage {
             };
 
 
-            var _templates = Directory.GetFiles(_templatePath, "*.txt", SearchOption.TopDirectoryOnly).Select(f => new Template(Path.GetFileNameWithoutExtension(f))).ToList();
-            Func<string, Template> findTplByName = name => _templates.Find(t => t.Name == name);
+            var _templates = new ObservableCollection<Template>();
 
-            foreach (var t in _templates)
-            {
+            _templates.CollectionChanged += (sender, args) => {
+                if (args.Action != System.Collections.Specialized.NotifyCollectionChangedAction.Add)
+                {
+                    return;
+                }
+                Template t = (Template)args.NewItems[0];
                 var bt = buildTemplates.AddMenuItem(t.Name, t.Icon);
                 bt.Click += delegate
                 {
                     _tplPanel.Template = t;
                 };
+                var ctxMenu = new ContextMenuStrip();
+                ctxMenu.AddMenuItem("Copy Chatcode").Click += (s, a) => System.Windows.Forms.Clipboard.SetText(t.Value);
+                bt.Menu = ctxMenu;
                 Adhesive.Binding.CreateOneWayBinding(() => bt.Text, () => t.Name);
+            };
+            Func<string, Template> findTplByName = name => _templates.SingleOrDefault(t => t.Name == name);
+
+            foreach (var t in
+                Directory
+                    .GetFiles(_templatePath, "*.txt", SearchOption.TopDirectoryOnly)
+                    .Select(f => new Template(Path.GetFileNameWithoutExtension(f)))
+            )
+            {
+                _templates.Add(t);
             }
 
             buildTemplates.Select((MenuItem)buildTemplates.Children.First());
@@ -196,14 +213,8 @@ namespace ExtendedBuildStorage {
             {
                 var toAdd = findTplByName(buildTemplates.SelectedMenuItem.Text).Copy();
                 _templates.Add(toAdd);
-                var bt = buildTemplates.AddMenuItem(toAdd.Name, toAdd.Icon);
-                bt.Click += delegate
-                {
-                    _tplPanel.Template = toAdd;
-                };
-                Adhesive.Binding.CreateOneWayBinding(() => bt.Text, () => toAdd.Name);
-                bt.Select();
-                _tplPanel.Template = toAdd; // poor mans click trigger
+                buildTemplates.Select((MenuItem)buildTemplates.Children.SingleOrDefault(t => ((MenuItem)t).Text == toAdd.Name));
+                _tplPanel.Template = toAdd;
             };
 
             GameService.Overlay.QueueMainThreadUpdate((gameTime) => {
