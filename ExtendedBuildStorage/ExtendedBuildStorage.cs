@@ -207,8 +207,6 @@ namespace ExtendedBuildStorage {
                 _templates.Add(t);
             }
 
-            buildTemplates.Select((MenuItem)buildTemplates.Children.First());
-
             newButton.Click += delegate
             {
                 var toAdd = new Template("[New Template]");
@@ -216,6 +214,17 @@ namespace ExtendedBuildStorage {
                 buildTemplates.Select((MenuItem)buildTemplates.Children.SingleOrDefault(t => ((MenuItem)t).Text == toAdd.Name));
                 _tplPanel.Template = toAdd;
             };
+
+
+            if (_templates.Count > 0)
+                buildTemplates.Select((MenuItem)buildTemplates.Children.First());
+            else
+            {
+                var toAdd = new Template("[New Template]");
+                _templates.Add(toAdd);
+                buildTemplates.Select((MenuItem)buildTemplates.Children.SingleOrDefault(t => ((MenuItem)t).Text == toAdd.Name));
+            }
+
 
             GameService.Overlay.QueueMainThreadUpdate((gameTime) => {
                 var searchBox = new TextBox()
