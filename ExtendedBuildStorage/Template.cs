@@ -7,24 +7,21 @@ namespace ExtendedBuildStorage
 {
     class Template: INotifyPropertyChanged
     {
+        public Template() {}
         public Template(string name)
         {
             _name = name;
             if (File.Exists(FullPath))
             {
                 _value = File.ReadAllText(FullPath);
-            }
-            else
-            {
-                throw new FileNotFoundException("Template with name <" + name + "> not found");
+                Dirty = false;
             }
         }
 
         public Template(string name, string value)
         {
-            // Will overwrite already existing builds
             _name = name;
-            Value = value;
+            _value = value;
         }
 
         public Template Copy()
@@ -32,8 +29,24 @@ namespace ExtendedBuildStorage
             return new Template(Name + "(Copy)", Value);
         }
 
+        public void Save()
+        {
+            if (!_dirty && _rename == "") return;
+            if (_rename != "")
+            {
+                if (File.Exists(_rename))
+                    File.Move(_rename, FullPath);
+            }
+            File.WriteAllText(FullPath, _value);
+            _rename = "";
+            Dirty = false;
+        }
+
         private string _name;
         private string _value;
+        private bool _dirty = true;
+        private string _rename = "";
+        private string _origvalue;
         private readonly string _path = ExtendedBuildStorage.ModuleInstance.DirectoriesManager.GetFullDirectoryPath("build-templates");
 
         private Texture2D _icon;
@@ -76,18 +89,35 @@ namespace ExtendedBuildStorage
 
         public string Name
         {
-            get => _name;
+            get
+            {
+                if (_dirty || _rename != "")
+                    return "*" + _name;
+
+                return _name;
+            }
             set
             {
-                var oldpath = FullPath;
                 if (_name == value)
                     return;
 
-                SetProperty(ref _name, value);
-                if (File.Exists(oldpath))
-                {
-                    File.Move(oldpath, FullPath);
-                }
+                if (_rename == "")
+                    _rename = FullPath;
+
+                _name = value;
+                if (_rename == FullPath)
+                    _rename = "";
+
+                OnPropertyChanged(nameof(Name));
+            }
+        }
+
+        private bool Dirty
+        {
+            set
+            {
+                SetProperty(ref _dirty, value);
+                OnPropertyChanged(nameof(Name));
             }
         }
 
@@ -96,9 +126,24 @@ namespace ExtendedBuildStorage
             get => _value;
             set
             {
+                if (_value == value)
+                    return;
+
+                if (_origvalue == "")
+                    _origvalue = _value;
+
                 // TODO: verify chatcode
                 SetProperty(ref _value, value);
-                File.WriteAllText(FullPath, _value);
+
+                if (_origvalue == value)
+                {
+                    Dirty = false;
+                    _origvalue = "";
+                }
+                else
+                {
+                    Dirty = true;
+                }
             }
         }
     }

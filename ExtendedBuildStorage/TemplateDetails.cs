@@ -11,6 +11,7 @@ namespace ExtendedBuildStorage
         private TextBox _txtCode;
         private Panel _skillPanel;
         private Panel _traitPanel;
+        private StandardButton _btnSave;
         public TemplateDetails(string name, string code) : base()
         {
             _tpl = new Template(name);
@@ -63,6 +64,7 @@ namespace ExtendedBuildStorage
                     Parent = _skillPanel,
                     Left = 20,
                 };
+                _txtName.TextChanged += (sender, args) => _tpl.Name = _txtName.Text;
 
                 _txtCode = new TextBox
                 {
@@ -71,6 +73,9 @@ namespace ExtendedBuildStorage
                     Top = _txtName.Bottom + Control.ControlStandard.ControlOffset.Y,
                     Left = 20,
                 };
+                _txtCode.TextChanged += (sender, args) => _tpl.Value = _txtCode.Text;
+                //Adhesive.Binding.CreateOneWayBinding(() => _txtCode.Text, () => _tpl.Value);
+
                 PropertyChanged += (sender, args) =>
                 {
                     if (args.PropertyName == nameof(Template))
@@ -97,15 +102,19 @@ namespace ExtendedBuildStorage
                 };
                 btnCopy.Click += (sender, args) => System.Windows.Forms.Clipboard.SetText(_tpl.Value);
 
-                var btnRename = new StandardButton
+                _btnSave = new StandardButton
                 {
-                    Text = "Rename",
+                    Text = "Save",
                     Left = _txtName.Right + Control.ControlStandard.ControlOffset.X,
                     Top = _txtName.Top,
                     Parent = _skillPanel,
                 };
-                btnRename.Click += (sender, args) => _tpl.Name = _txtName.Text;
 
+                _btnSave.Click += (sender, args) =>
+                {
+                    _tpl.Value = _txtCode.Text;
+                    _tpl.Save();
+                };
             });
         }
     }

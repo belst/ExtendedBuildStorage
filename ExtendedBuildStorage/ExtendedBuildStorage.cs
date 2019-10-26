@@ -211,7 +211,7 @@ namespace ExtendedBuildStorage {
 
             newButton.Click += delegate
             {
-                var toAdd = findTplByName(buildTemplates.SelectedMenuItem.Text).Copy();
+                var toAdd = new Template("[New Template]");
                 _templates.Add(toAdd);
                 buildTemplates.Select((MenuItem)buildTemplates.Children.SingleOrDefault(t => ((MenuItem)t).Text == toAdd.Name));
                 _tplPanel.Template = toAdd;
